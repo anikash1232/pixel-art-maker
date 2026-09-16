@@ -13,9 +13,6 @@ import { rgbToHex, hexToRgb } from "./utils";
 const engine = new PixelArtMakerEngine();
 
 // Defines a helper variable to determine if the mouse is pressed or not.
-// HINT: You should make use of this to figure out how to manage drawing on the canvas!
-// HINT 2: You will need to find a way to toggle this variable to see if the mouse is
-//         pressed or not anywhere on the website...
 let isMouseDown = false;
 
 // Defines a new `cellCursor` HTML element that should be placed inside of cells
@@ -30,114 +27,147 @@ cellCursor.style.flexGrow = "1";
 cellCursor.style.alignSelf = "stretch";
 cellCursor.style.border = "dotted black";
 
-/** --------------------------------------------------------------------------- */
-/** | All to-dos are listed below!                                            | */
-/** --------------------------------------------------------------------------- */
-
-// TODO: Implement the `syncCanvasWithEngine` method below.
+// Keeps track of the cell the mouse is currently hovering over, so that the
+// cursor can be put back in the right place once the user stops drawing.
+let hoveredCell: HTMLElement | null = null;
 
 /**
  * Helper function that syncs the HTML canvas with the state of the canvas in
  * the `canvas` property of the engine.
  *
  * This means that calling this function should change the colors of all of the
- * cells on the canvas to the color stored in the canvas. You should set the 
+ * cells on the canvas to the color stored in the canvas. You should set the
  * CSS attribute for the background color to the CSS hexstring that corresponds
- * to the RgbColor stored in the Canvas. See the function rgbToHex in the 
+ * to the RgbColor stored in the Canvas. See the function rgbToHex in the
  * file utils.ts.
- *
- * Note: Examine `index.html` to figure out how to refer to each cell object
- *       using DOM methods!
  */
 const syncCanvasWithEngine = () => {
-  /* Your code here */
+  for (let r = 0; r < engine.height; r++) {
+    for (let c = 0; c < engine.width; c++) {
+      // Each cell in index.html has an id in the form `r{row}_c{column}`.
+      const cell = document.getElementById(`r${r}_c${c}`);
+      if (cell === null) {
+        continue;
+      }
+      cell.style.backgroundColor = rgbToHex(engine.getPixel(r, c));
+    }
+  }
 };
 
 // Syncs the canvas at the start.
 syncCanvasWithEngine();
 
-// TODO: Through creating event handlers, correctly toggle `isMouseDown` to
-//       represent the state of whether the mouse is pressed down or not!
+// Track whether the mouse is pressed anywhere on the page. Listening on the
+// document (rather than on each cell) means that a press or release outside of
+// the canvas is still accounted for.
+document.addEventListener("mousedown", () => {
+  isMouseDown = true;
+  // While the user is drawing, the hover cursor should get out of the way.
+  cellCursor.remove();
+});
 
-/* Your code here */
+document.addEventListener("mouseup", () => {
+  isMouseDown = false;
+  // Once the user stops drawing, show the cursor on whichever cell they are on.
+  if (hoveredCell !== null) {
+    hoveredCell.appendChild(cellCursor);
+  }
+});
 
-// TODO: Set up the correct event handlers to handle the user clicking on
-//       **or dragging *through* ** each cell to paint on the canvas!
-//       Utilize the `engine` methods and `syncCanvasWithEngine` to
-//       accomplish this.
-//
-// HINT: Just using "click" as the event will not be sufficient, for
-//       two reasons:
-//       - Click only will activate when the user *lifts up* the mouse
-//         button and not immediately when pressing, which is not the
-//         feel we want when drawing.
-//       - Often, users will want to drag across *many* cells at once
-//         to paint all of them! It will be up to you to find the correct
-//         combination of event handlers to implement this functionality.
+// If the mouse leaves the page entirely, the mouseup may never reach us, so
+// reset the drawing state to avoid painting when the mouse comes back.
+document.addEventListener("mouseleave", () => {
+  isMouseDown = false;
+  hoveredCell = null;
+  cellCursor.remove();
+});
 
-/* Your code here. */
+// Handle the user clicking on -- or dragging *through* -- each cell.
+// "mousedown" paints as soon as the button is pressed (rather than waiting for
+// the release, as "click" would), and "mouseenter" continues painting every
+// cell the mouse is dragged through while the button is held down.
+for (let r = 0; r < engine.height; r++) {
+  for (let c = 0; c < engine.width; c++) {
+    const cell = document.getElementById(`r${r}_c${c}`);
+    if (cell === null) {
+      continue;
+    }
 
-// TODO: Create the correct event handler to change the selected color once
-//       the user picks a new color. Update the engine to use the new color
-//       and update the color CSS attribute of the color icon to reflect
-//       the newly selected color. Note that the color input (i.e., the color picker)
-//       and the color icon are separate HTML elements - try to find them in the HTML!
-//
-// NOTE: Check out the following official documentation to learn a bit more
-//       about the type of event handler needed here...
-//       https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event
-//
-// HINT: If you are having issues with `event.target` not having the property
-//       `value`, that is because of a TypeScript quirk. This error would
-//       disappear if you first cast: (event.target as HTMLInputElement)
+    const paintThisCell = () => {
+      engine.paintCell(r, c);
+      syncCanvasWithEngine();
+    };
 
-/* Your code here. */
+    cell.addEventListener("mousedown", paintThisCell);
 
-// TODO: Create the correct event handlers to change the engine's active tool
-//       to the pencil, bucket, or eraser when these buttons are pressed!
-//
-// HINT: You can find the HTML elements to work with in the #options-drawer element.
-//       Remember, these three tools are option buttons..
-//
-//       Note that there is a CSS rule in styles.css at the end of the file
-//       which properly sets the background of the currently selected tool identified
-//       by the presence of "selected" as part of the class attribute. 
-//       In index.html you can see that the pencil button starts off with this class value.
-//       Your code should remove "selected" from the class attribute of the tool that 
-//       currently has it and then add "selected" to the class attribute of the tool that
-//       was newly selected. This can be done using the classList property of DOM elements.
-//       See: https://developer.mozilla.org/en-US/docs/Web/API/Element/classList
+    cell.addEventListener("mouseenter", () => {
+      hoveredCell = cell;
+      if (isMouseDown) {
+        paintThisCell();
+      } else {
+        // Appending the cursor also removes it from the previous cell.
+        cell.appendChild(cellCursor);
+      }
+    });
+  }
+}
 
-/* Your code here. */
+// If the mouse leaves the canvas (for example, to change tools), the cursor
+// should not stay stuck in the last cell it was in.
+document.getElementById("canvas")?.addEventListener("mouseleave", () => {
+  hoveredCell = null;
+  cellCursor.remove();
+});
 
-// TODO: Create the correct event handler to download the current image when
-//       the "save" / download button is pressed.
+// Change the selected color when the user picks a new one. The color input
+// (`#color-picker`) is invisible and layered underneath the icon that actually
+// displays the color (`#color-icon`), so both need to be updated.
+const colorIcon = document.getElementById("color-icon");
+const colorPicker = document.getElementById("color-picker");
 
+const handleColorChange = (event: Event) => {
+  const hex = (event.target as HTMLInputElement).value;
+  engine.activeColor = hexToRgb(hex);
+  if (colorIcon !== null) {
+    colorIcon.style.color = hex;
+  }
+};
+
+// "change" fires once the user commits a color; "input" also updates the blob
+// live while they are still dragging around inside the color picker.
+colorPicker?.addEventListener("change", handleColorChange);
+colorPicker?.addEventListener("input", handleColorChange);
+
+// Change the engine's active tool when one of the tool buttons is pressed, and
+// move the "selected" class so the user can see which tool is active.
+const tools: [string, DrawingTool][] = [
+  ["pencil", DrawingTool.Pencil],
+  ["bucket", DrawingTool.Bucket],
+  ["eraser", DrawingTool.Eraser],
+];
+
+tools.forEach(([id, tool]) => {
+  const button = document.getElementById(id);
+  if (button === null) {
+    return;
+  }
+  button.addEventListener("click", () => {
+    document
+      .querySelectorAll("#options-drawer .option-button")
+      .forEach((otherButton) => otherButton.classList.remove("selected"));
+    button.classList.add("selected");
+    engine.activeTool = tool;
+  });
+});
+
+// Download the current image when the "save" / download button is pressed.
 document.getElementById("save")?.addEventListener('click', () => engine.downloadImageFromCanvas());
 
-/* Your code here. */
-
-// TODO: Create the correct event handler to *show a confirmation alert* prompting
-//       the user when the user presses the "clear" image button. If the user pressed
-//       "OK", clear the image. Otherwise, do nothing. Use `syncCanvasWithEngine`!
-//
-// NOTE: For more information on how to show alerts, check out this resource:
-//       https://www.w3schools.com/js/js_popup.asp
-
-/* Your code here */
-
-// TODO: Finally, you want to make use of the reference to the `cellCursor` HTML element.
-//       You want this cursor to appear in the cell that the user is currently hovering
-//       over *if they are not actively drawing*. This cursor should then slightly whiten
-//       / highlight the cell, allowing the user to see what cell they are about to click
-//       as they draw on the canvas. To make the cursor appear, simply add it as a child
-//       element to the cell. Other requirements:
-//       -  If the user presses down to start to draw, the cursor should disappear.
-//       - Once the user releases the mouse button, the cursor should reappear.
-//       - If the user's mouse leaves the canvas window (for example, to change tools),
-//         the cursor should disappear also rather than staying stuck in a random cell.
-//
-// NOTE: You are recommended to modify event handlers from above to accomplish this, but
-//       feel free to create new event handlers if you wish.
-
-// FINAL STEP: Congratulations! Now, try drawing something cool!
+// Clear the canvas when the "clear" button is pressed, but only after the user
+// confirms -- clearing a drawing cannot be undone.
+document.getElementById("clear")?.addEventListener("click", () => {
+  if (confirm("Are you sure you want to clear the canvas? This cannot be undone.")) {
+    engine.clearCanvas();
+    syncCanvasWithEngine();
+  }
+});

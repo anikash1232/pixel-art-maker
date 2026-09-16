@@ -80,8 +80,6 @@ export class PixelArtMakerEngine {
     this.loadCanvas();
   }
 
-  // TODO: Implement the `paintCell` method below.
-
   /**
    * Change the color of a cell, depending on the selected tool.
    * - If the pencil is selected, the color is changed to the active color.
@@ -92,19 +90,36 @@ export class PixelArtMakerEngine {
    * @param c: Column of the cell to paint (from 0-15)
    */
   paintCell(r: number, c: number): void {
-    /* Your code here */
+    if (this.activeTool === DrawingTool.Pencil) {
+      // The pencil paints only the cell that was clicked / dragged through.
+      this.setPixel(r, c, { ...this.activeColor });
+    } else if (this.activeTool === DrawingTool.Bucket) {
+      // The bucket floods the whole canvas with the active color.
+      for (let row = 0; row < this.height; row++) {
+        for (let col = 0; col < this.width; col++) {
+          this.setPixel(row, col, { ...this.activeColor });
+        }
+      }
+    } else {
+      // The eraser restores the cell to its default checkerboard color.
+      this.setPixel(r, c, this.blankCellColor(r, c));
+    }
+    this.saveCanvas();
   }
 
-  // TODO: Implement the `clearCanvas` method below.
-  //
-  // HINT: Remember that the blank canvas is not entirely white - to
+  // NOTE: Remember that the blank canvas is not entirely white - to
   // make the grid more apparent, we use a checkerboard pattern! Use
   // the `blankCellColor(r, c)` method to determine which color should
   // be placed at a cell in position (r,c).
 
   /** Clears the canvas back to its default colors, then saves the canvas. */
   clearCanvas(): void {
-    /* Your code here */
+    for (let r = 0; r < this.height; r++) {
+      for (let c = 0; c < this.width; c++) {
+        this.setPixel(r, c, this.blankCellColor(r, c));
+      }
+    }
+    this.saveCanvas();
   }
 
   /** Downloads the currently drawn canvas as a PNG file  */
