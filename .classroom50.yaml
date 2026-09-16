@@ -1,0 +1,12 @@
+schema: "classroom50/repo-config/v1"
+classroom: "comp-426"
+assignment: "a02-pixel-art-maker"
+owner:
+  username: "anikash1232"
+  id: 96270037
+  accepted_at: "2026-09-16T21:02:53Z"
+source:
+  owner: "comp426-26f"
+  owner_id: 306301300
+  repo: "a02-template"
+  branch: "main"
